@@ -37,7 +37,7 @@ func Generate(option *Option) error {
 
 	w := splunk.EventWriter{
 		Client:         s,
-		FlushInterval:  60,
+		FlushInterval:  60 * time.Second,
 		FlushThreshold: int(option.Batch),
 		MaxRetries:     2,
 		BufferSize:     int(option.Batch),

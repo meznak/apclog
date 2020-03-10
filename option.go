@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/pflag"
 )
@@ -23,15 +24,20 @@ Options:
   -i, --index integer      initial index (count) in the overall log sequence
 `
 
-var validFormats = []string{"apache_common", "apache_combined"}
+var validFormats = []string{"apache_common", "apache_combined", "bluecoat"}
 
 // Option defines log generator options
 type Option struct {
-	Format    string
-	Number    int
-	Created   float64
-	Sleep     int64
-    Index     int64
+	Format      string
+	Number      int
+	Created     int64
+	Sleep       int64
+	Index       int64
+	Batch       int64
+	Server      string
+	Token       string
+	SplunkIndex string
+	Continuous  bool
 }
 
 func init() {
@@ -53,11 +59,14 @@ func errorExit(err error) {
 
 func defaultOptions() *Option {
 	return &Option{
-		Format:    "apache_common",
-		Number:    1000,
-        Created:   0.0,
-		Sleep:     0,
-        Index:     1,
+		Format:      "apache_common",
+		Number:      1,
+		Created:     time.Now().Unix(),
+		Sleep:       0,
+		Index:       1,
+		Batch:       10000,
+		SplunkIndex: "main",
+		Continuous:  false,
 	}
 }
 
@@ -78,7 +87,7 @@ func ParseNumber(lines int) (int, error) {
 }
 
 // ParseCreated validates the given start time
-func ParseCreated(created float64) (float64, error) {
+func ParseCreated(created int64) (int64, error) {
 	if created < 0 {
 		return 0.0, errors.New("created can not be negative")
 	}
@@ -101,6 +110,17 @@ func ParseIndex(index int64) (int64, error) {
 	return index, nil
 }
 
+// ParseIndex validates the given number
+func ParseBatch(batch int64) (int64, error) {
+	if batch < 0 {
+		return 0, errors.New("batch can not be negative")
+	}
+	return batch, nil
+}
+
+func ParseString(s string) (string, error) {
+	return s, nil
+}
 
 // ParseOptions parses given parameters from command line
 func ParseOptions() *Option {
@@ -112,9 +132,14 @@ func ParseOptions() *Option {
 	version := pflag.BoolP("version", "v", false, "Show version")
 	format := pflag.StringP("format", "f", opts.Format, "Log format")
 	number := pflag.IntP("number", "n", opts.Number, "Number of lines to generate")
-	created := pflag.Float64P("created", "c", opts.Created, "Creation start time for each log (in seconds since epoch)")
+	created := pflag.Int64P("created", "c", opts.Created, "Creation start time for each log (in seconds since epoch)")
 	sleep := pflag.Int64P("sleep", "s", opts.Sleep, "Creation time interval for each log (in nanoseconds)")
 	index := pflag.Int64P("index", "i", opts.Index, "Initial index (count) in the overall log sequence")
+	batch := pflag.Int64P("batch", "b", opts.Batch, "Batch size to send to HEC")
+	server := pflag.StringP("server", "u", opts.Server, "HEC URL")
+	token := pflag.StringP("token", "t", opts.Token, "HEC Token")
+	splunk_index := pflag.StringP("splunk_index", "r", opts.SplunkIndex, "Splunk Index")
+	continuous := pflag.BoolP("realtime", "x", opts.Continuous, "Run continuously")
 
 	pflag.Parse()
 
@@ -141,5 +166,21 @@ func ParseOptions() *Option {
 	if opts.Index, err = ParseIndex(*index); err != nil {
 		errorExit(err)
 	}
+	if opts.Batch, err = ParseBatch(*batch); err != nil {
+		errorExit(err)
+	}
+	if opts.Server, err = ParseString(*server); err != nil {
+		errorExit(err)
+	}
+	if opts.Token, err = ParseString(*token); err != nil {
+		errorExit(err)
+	}
+	if opts.SplunkIndex, err = ParseString(*splunk_index); err != nil {
+		errorExit(err)
+	}
+	if *continuous {
+		opts.Continuous = true
+	}
 	return opts
+
 }

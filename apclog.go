@@ -24,7 +24,7 @@ var sourcetype = map[string]string{
 func Generate(option *Option) error {
 	// Create new Splunk client
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	var httpClient = &http.Client{Timeout: time.Second * 2, Transport: tr}
+	var httpClient = &http.Client{Timeout: time.Second * 20, Transport: tr}
 
 	s := splunk.NewClient(
 		httpClient,
@@ -40,6 +40,7 @@ func Generate(option *Option) error {
 		FlushInterval:  60,
 		FlushThreshold: int(option.Batch),
 		MaxRetries:     2,
+		BufferSize:     int(option.Batch),
 	}
 
 	frac_ns := 1e9 * (option.Created - int64(math.Floor(float64(option.Created))))
@@ -52,7 +53,7 @@ func Generate(option *Option) error {
 		limiter := time.Tick(time.Duration(1000000000/option.Number) * time.Nanosecond)
 		for {
 			every := DeriveEvery(index)
-			evt := NewLog(option.Format, created, every)
+			evt := NewLog(option.Format, time.Now(), every)
 			e := s.NewEventWithTime(time.Now().UnixNano(), evt, source[option.Format], sourcetype[option.Format], s.Index)
 			<-limiter
 			_, _ = w.Write(*e)

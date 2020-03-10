@@ -18,7 +18,6 @@ SERVERS+=("server1")
 SERVERS+=("server2")
 SERVERS+=("server3")
 
-for server in $SERVERS
-do
-        ./gen_hec.sh $GB_PER_DAY $DAYS_TO_GEN $WOKERS $BATCH $server $TOKEN $INDEX &
+for server in ${SERVERS[@]}; do
+        ./gen_hec.sh $GB_PER_DAY $DAYS_TO_GEN $WORKERS $BATCH $server $TOKEN $INDEX &
 done

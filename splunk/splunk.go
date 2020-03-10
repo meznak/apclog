@@ -36,6 +36,7 @@ type Client struct {
 	Source     string //Default source
 	SourceType string //Default source type
 	Index      string //Default index
+	Chan       chan int
 }
 
 // NewClient creates a new client to Splunk.
@@ -50,6 +51,7 @@ func NewClient(httpClient *http.Client, URL string, Token string, Source string,
 		httpClient = &http.Client{Timeout: time.Second * 20, Transport: tr}
 	}
 	hostname, _ := os.Hostname()
+	channel := make(chan int, 100)
 	c := &Client{
 		HTTPClient: httpClient,
 		URL:        URL,
@@ -58,6 +60,7 @@ func NewClient(httpClient *http.Client, URL string, Token string, Source string,
 		Source:     Source,
 		SourceType: SourceType,
 		Index:      Index,
+		Chan:       channel,
 	}
 	return c
 }
@@ -152,12 +155,15 @@ func (c *Client) doRequest(b *bytes.Buffer) error {
 	req, err := http.NewRequest("POST", url, b)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Splunk "+c.Token)
+	req.Close = true
 
 	// receive response
+	c.Chan <- 1
 	res, err := c.HTTPClient.Do(req)
+	<-c.Chan
 	if err != nil {
 		req.Body.Close()
-		fmt.Println(err)
+		fmt.Printf("Splunk Error: %s \r\n", err)
 		return err
 	}
 

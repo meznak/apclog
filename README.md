@@ -1,7 +1,7 @@
 # apclog
 Golang Eventgen for Splunk HEC
 
-* forked from https://github.com/romsu/apclog
+* forked from https://github.com/rsomu/apclog
 * based on https://github.com/mingrammer/flog
 
 ## Usage
